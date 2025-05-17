@@ -33,12 +33,15 @@ All data are stored in CSV files and preprocessed to extract structured features
 
 ### 3.1 Baseline Attempts and Their Limitations
 
+Before using the current model, I tried multiple approaches to have the best recommender system as possible:
+
 | Attempt | Description | Outcome |
 |--------|-------------|---------|
-| 1 | ALS-only (implicit collaborative filtering) | Weak performance, could not rank well. |
-| 2 | Transformer-based sequence modeling | Required more data than available, did not converge. |
-| 3 | 2-stage LightGBM with classification only | Could identify relevant videos, but ranking was poor due to binary output. |
-| 4 | 2-stage LightGBM with regression only | Could rank items, but failed to reliably detect relevance (i.e., false positives). |
+| 0 | **Popularity-based ranking** (recommend most-watched videos to all users) | Very low performance due to lack of personalization and model simplicity. |
+| 1 | **ALS-only** (implicit collaborative filtering) | Weak performance; could not rank well. |
+| 2 | **Transformer-based sequence modeling** | Required more data than available; did not converge properly. |
+| 3 | **2-stage LightGBM (classification only)** | Could identify relevant videos, but ranking was poor due to binary output (all relevant items treated equally). |
+| 4 | **2-stage LightGBM (regression only)** | Could rank items, but ranking was not performant. |
 
 ### 3.2 Final Hybrid 3-Stage Pipeline
 
@@ -104,7 +107,7 @@ Our final approach consists of three stages:
 
 The performance is evaluated using the following metrics: **Precision@K**, **Recall@K**, **NDCG@K**, and **MAP@K**, for various values of K.
 
-**INFO: A relevant video is a video with a watch_ratio superior to 1.0.**
+> **Note: A relevant video is a video with a watch_ratio superior to 1.0.**
 * The train-set used for these metrics calculations is `big_matrix.csv`
 * The test-set used is `small_matrix.csv`
 
@@ -161,9 +164,9 @@ The performance is evaluated using the following metrics: **Precision@K**, **Rec
 
 ## 6. Key Observations
 
-- The **LightGBM classifier** alone performs well in terms of precision but lacks the ability to rank effectively.
-- The **regressor** improves ranking metrics (NDCG, MAP), but the ranking metrics are not satisfying.
-- The **hybrid approach** maintains the classifier's precision while leveraging the regressor to enhance ranking quality. This leads to **state-of-the-art NDCG scores**.
+- The **LightGBM classifier** alone performs well in terms of precision but lacks the ability to rank effectively due to the fact that it sees all relevant items as the same (binary).
+- The **regressor** improves ranking metrics (NDCG, MAP), but the ranking metrics are not satisfying (relatively low NDCG).
+- The **hybrid approach** maintains the classifier's precision and its relatively short processing time (shorter than the regressor) while leveraging the regressor to enhance ranking quality. This leads to **state-of-the-art NDCG scores**.
 - Classifier defines **relevant items**, regressor defines **how to rank them**.
 
 ---
@@ -210,7 +213,7 @@ For systems with limited resources (<20GB RAM), the script provides optimization
 - `USE_SMALL_TRAIN_SAMPLE`: Reduces training data size
 - `USE_SMALL_TEST_SAMPLE`: Reduces test data size
 
-> **Note:** Setting these variables to `True` will reduce memory consumption but may impact model performance. Performance degradation is proportional to the reduction in training data. (Default `SAMPLE_FRAC` allows a computer with 16GB of RAM to run the script).
+> **Note:** Setting these variables to `True` will reduce memory consumption but may impact model performance. Performance degradation is proportional to the reduction in training data. *(Default `SAMPLE_FRAC` allows a computer with 16GB of RAM to run the script)*.
 
 ### Execution Environment
 
@@ -218,6 +221,7 @@ All benchmarks were conducted on:
 - **Processor:** AMD Ryzen 7 5800H
 - **Memory:** 32GB DDR4
 - **Operating System:** Arch Linux x86_64
+- **Python:** 3.11.0
 
 ---
 
@@ -233,6 +237,7 @@ All benchmarks were conducted on:
 All data files must be in `./KuaiRec 2.0/data/`
 
 ```bash
+pip install -r requirements.txt
 python recommender.py
 ```
 

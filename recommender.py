@@ -67,8 +67,31 @@ os.environ['OPENBLAS_NUM_THREADS'] = '1'
 
 # Utility Functions
 
-# Function to reduce memory usage of DataFrame by downcasting numeric types
 def reduce_mem_usage(df, verbose=True):
+    """
+    Reduces the memory usage of a pandas DataFrame by downcasting numerical columns 
+    to more memory-efficient types.
+
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        The DataFrame whose memory usage is to be reduced.
+    verbose : bool, optional (default=True)
+        If True, prints information about memory usage reduction and skipped columns.
+
+    Returns:
+    --------
+    pandas.DataFrame
+        The DataFrame with reduced memory usage.
+
+    Notes:
+    ------
+    - The function iterates through all columns in the DataFrame and checks their data types.
+    - Numerical columns (integers and floats) are downcasted to the smallest possible subtype 
+      that can hold their data without loss of information.
+    - Columns with all NaN values are skipped.
+    - The memory usage before and after the operation is printed if `verbose` is True.
+    """
     numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
     start_mem = df.memory_usage().sum() / 1024**2
     for col in df.columns:
@@ -101,6 +124,36 @@ def reduce_mem_usage(df, verbose=True):
 
 # Function to load and preprocess interaction data
 def load_and_preprocess_interactions(file_path, sample_frac=1.0, use_sample=False):
+    """
+    Load and preprocess interaction data from a CSV file.
+
+    This function reads interaction data from a specified file, reduces memory usage,
+    extracts temporal features, processes watch ratio values, and adds derived columns
+    for further analysis.
+
+    Args:
+        file_path (str): The relative path to the CSV file containing interaction data.
+        sample_frac (float, optional): Fraction of the data to sample. Defaults to 1.0 (use all data).
+        use_sample (bool, optional): Whether to sample the data. Defaults to False.
+
+    Returns:
+        pd.DataFrame: A preprocessed DataFrame containing the following columns:
+            - user_id: Identifier for the user.
+            - video_id: Identifier for the video.
+            - watch_ratio: Original watch ratio value.
+            - time: Timestamp of the interaction.
+            - video_duration: Duration of the video.
+            - hour_of_day: Hour of the day extracted from the timestamp.
+            - day_of_week: Day of the week extracted from the timestamp.
+            - watch_ratio_original: Processed watch ratio as a float.
+            - liked: Binary column indicating if the watch ratio is greater than 1.0.
+            - watch_ratio_clipped: Watch ratio clipped to a maximum value based on the 99th percentile.
+
+    Notes:
+        - The function handles missing or invalid data by coercing errors and filling NaN values.
+        - Watch ratio values are clipped to a quantile-based threshold to handle outliers.
+        - Memory usage of the DataFrame is reduced by optimizing data types.
+    """
     print(f"Loading {file_path}...")
     df = pd.read_csv(os.path.join(DATA_DIR, file_path),
                      usecols=['user_id', 'video_id', 'watch_ratio', 'time', 'video_duration'])
@@ -128,6 +181,33 @@ def load_and_preprocess_interactions(file_path, sample_frac=1.0, use_sample=Fals
 
 # Function to get TF-IDF features from captions
 def get_text_features(num_tfidf_feats=NUM_TFIDF_FEATURES):
+    """
+    Generates TF-IDF features for video captions and related text data.
+
+    This function processes a dataset containing video captions, manual cover text, 
+    and topic tags to generate TF-IDF features. It handles missing or invalid data 
+    gracefully and ensures the output DataFrame has the specified number of TF-IDF 
+    features.
+
+    Args:
+        num_tfidf_feats (int): The number of TF-IDF features to generate. Defaults 
+                               to the value of NUM_TFIDF_FEATURES.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the video IDs and their corresponding 
+                      TF-IDF features. If the input data is missing or invalid, 
+                      an empty DataFrame with the appropriate structure is returned.
+
+    Notes:
+        - The combined text for each video is created by concatenating the 'manual_cover_text', 
+          'caption', and 'topic_tag' columns, after converting to lowercase and removing 
+          non-alphanumeric characters.
+        - If the combined text is empty or contains only whitespace, an empty DataFrame is returned.
+        - The function ensures that the output DataFrame has exactly `num_tfidf_feats` columns 
+          for TF-IDF features, padding with zeros if necessary.
+        - The 'video_id' column is ensured to have the dtype `np.int32`, and TF-IDF feature 
+          columns are cast to `np.float16` for memory efficiency.
+    """
     print("Generating TF-IDF features for videos...")
     captions_df_path = os.path.join(DATA_DIR, 'kuairec_caption_category.csv')
     if not os.path.exists(captions_df_path):
@@ -187,6 +267,33 @@ def get_text_features(num_tfidf_feats=NUM_TFIDF_FEATURES):
 
 # Function to load extended features (user/item features)
 def load_extended_features(train_interactions_df):
+    """
+    Loads and processes extended user and item features for a recommendation system.
+    This function reads user and item feature data from various CSV files, processes
+    them (e.g., memory reduction, encoding, aggregation), and merges them with training
+    interaction data to generate comprehensive feature sets for users and items.
+    Args:
+        train_interactions_df (pd.DataFrame): A DataFrame containing training interaction
+            data with at least 'user_id' and 'video_id' columns.
+    Returns:
+        tuple:
+            - user_features_df (pd.DataFrame): A DataFrame containing processed user features,
+              including categorical encodings, one-hot encodings, and aggregated interaction data.
+            - item_main_features_df (pd.DataFrame): A DataFrame containing processed item features,
+              including categorical encodings, text features, aggregated daily features, and popularity metrics.
+    Notes:
+        - The function expects certain CSV files to exist in the `DATA_DIR` directory:
+            - 'user_features.csv': Contains user-related features.
+            - 'kuairec_caption_category.csv': Contains item category features.
+            - 'item_daily_features.csv': Contains daily item statistics.
+        - Text features are obtained via the `get_text_features()` function, and their TF-IDF
+          values are processed accordingly.
+        - Memory usage is reduced for large DataFrames using the `reduce_mem_usage()` function.
+        - Popularity features are derived from the `train_interactions_df`.
+    Raises:
+        KeyError: If required columns are missing in the input DataFrames or CSV files.
+        ValueError: If data types cannot be coerced as expected during processing.
+    """
 
     # User features
     print("Loading user features (user_features.csv)...")
@@ -314,6 +421,29 @@ def load_extended_features(train_interactions_df):
 
 # Function to calculate ALS scores for user-item pairs
 def get_als_scores_vectorized(df, user_factors, item_factors, user_id_map, video_id_map):
+    """
+    Compute ALS (Alternating Least Squares) scores for user-item pairs in a vectorized manner.
+
+    This function calculates the dot product between user and item latent factor vectors
+    for valid user-item pairs, based on the provided mappings and factor matrices.
+
+    Args:
+        df (pd.DataFrame): A DataFrame containing user-item interactions with at least
+            two columns: 'user_id' and 'video_id'.
+        user_factors (np.ndarray): A 2D NumPy array where each row corresponds to the latent
+            factors of a user.
+        item_factors (np.ndarray): A 2D NumPy array where each row corresponds to the latent
+            factors of an item.
+        user_id_map (dict): A dictionary mapping user IDs from the DataFrame to their
+            corresponding indices in the `user_factors` array.
+        video_id_map (dict): A dictionary mapping video IDs from the DataFrame to their
+            corresponding indices in the `item_factors` array.
+
+    Returns:
+        np.ndarray: A 1D NumPy array of scores, where each score corresponds to the dot product
+        of the user and item latent factors for the respective user-item pair in the input DataFrame.
+        Invalid user-item pairs (e.g., missing mappings or out-of-bounds indices) will have a score of 0.
+    """
     user_indices = df['user_id'].map(user_id_map).fillna(-1).astype(int).values
     item_indices = df['video_id'].map(video_id_map).fillna(-1).astype(int).values
     scores = np.zeros(len(df), dtype=np.float32)
@@ -329,6 +459,28 @@ def get_als_scores_vectorized(df, user_factors, item_factors, user_id_map, video
 
 # Function to create final features for LightGBM
 def create_lgbm_features_final(df, user_feats, item_feats):
+    """
+    Prepares and processes features for LightGBM by merging user and item features 
+    with the main interaction dataframe and handling missing values and data types.
+    Args:
+        df (pd.DataFrame): The main interaction dataframe containing at least 'user_id' 
+            and 'video_id' columns.
+        user_feats (pd.DataFrame): A dataframe containing user-specific features, 
+            with 'user_id' as a key column.
+        item_feats (pd.DataFrame): A dataframe containing item-specific features, 
+            with 'video_id' as a key column.
+    Returns:
+        pd.DataFrame: A dataframe with merged features from `user_feats` and `item_feats`, 
+        with missing values handled and data types optimized for memory efficiency.
+    Notes:
+        - The function ensures that 'user_id' and 'video_id' columns are of type int32.
+        - Missing values in numeric columns are filled with 0.0, and the columns are 
+          downcast to float16 or float32 based on their range.
+        - Missing values in integer columns are filled with -1.
+        - Missing values in object or categorical columns are filled with the string "-1_missing".
+        - If the 'video_duration' column exists, its missing values are filled with the 
+          median value of the column, and it is cast to float32.
+    """
     df['user_id'] = df['user_id'].astype(np.int32)
     if 'user_id' in user_feats.columns: user_feats['user_id'] = user_feats['user_id'].astype(np.int32)
     df['video_id'] = df['video_id'].astype(np.int32)
@@ -492,8 +644,8 @@ for user_id, group in tqdm(test_user_groups, desc="Evaluating users"):
     # Get the classifier's ranking of ALL items for the user
     classifier_ranked_group = group.sort_values('classifier_score', ascending=False)
     
-    # For P, R, MAP, and NDCG, we will consider the items *as selected by the classifier* for the top K,
-    # but for NDCG and MAP, their *order within those K* will be determined by the regressor.
+    # For P, R, MAP, and NDCG, we will consider the items as selected by the classifier for the top K,
+    # but for NDCG and MAP, their order within those K will be determined by the regressor.
 
     for k_val in K_VALUES_EVAL:
         num_items_for_user_total = len(classifier_ranked_group)
