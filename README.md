@@ -104,11 +104,12 @@ Our final approach consists of three stages:
 
 The performance is evaluated using the following metrics: **Precision@K**, **Recall@K**, **NDCG@K**, and **MAP@K**, for various values of K.
 
-### 5.1 Precision@K
-
 **INFO: A relevant video is a video with a watch_ratio superior to 1.0.**
 * The train-set used for these metrics calculations is `big_matrix.csv`
 * The test-set used is `small_matrix.csv`
+
+
+### 5.1 Precision@K
 
 | K | Classifier Only | Regressor Only | Hybrid |
 |----|------------------|----------------|--------|
@@ -192,7 +193,7 @@ Both models prioritize similar features, with user demographics and content crea
   - Classifier-only: ~8.69 minutes
   - Regressor-only: ~9.28 minutes
   - Hybrid model: ~19.00 minutes
-- **Hardware:** Ryzen 7 5800H, 32GB RAM
+- **Hardware used for Testing:** Ryzen 7 5800H, 32GB RAM
 
 ---
 
@@ -208,7 +209,7 @@ Both models prioritize similar features, with user demographics and content crea
 All data files must be in `./KuaiRec 2.0/data/`
 
 ```bash
-python tmp11.py
+python recommender.py
 ```
 
 ---

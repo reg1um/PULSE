@@ -13,7 +13,7 @@ import re
 from tqdm import tqdm
 
 # Global constants
-DATA_DIR = './'
+DATA_DIR = './KuaiRec 2.0/data'
 USE_SMALL_TRAIN_SAMPLE = False 
 TRAIN_SAMPLE_FRAC = 0.1
 USE_SMALL_TEST_SAMPLE = False 
