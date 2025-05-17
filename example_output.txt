@@ -1,0 +1,115 @@
+Loading big_matrix.csv...
+Mem. usage decreased to 215.11 Mb (55.0% reduction)
+Loaded big_matrix.csv: (12530806, 10)
+Loading small_matrix.csv...
+Mem. usage decreased to 80.28 Mb (55.0% reduction)
+Loaded small_matrix.csv: (4676570, 10)
+Loading user features (user_features.csv)...
+Loading item category features (kuairec_caption_category.csv)...
+Generating TF-IDF features for videos...
+Generated TF-IDF features: (10728, 51), video_id dtype: int32
+Loading and aggregating item daily features (item_daily_features.csv)...
+Generating popularity features from training interactions...
+Final user_features_df shape: (7176, 33), user_id dtype: int32
+Final item_features_df shape: (10729, 63), video_id dtype: int32
+
+Training ALS model...
+/home/regium/.pyenv/versions/3.11.0/lib/python3.11/site-packages/implicit/cpu/als.py:95: RuntimeWarning: OpenBLAS is configured to use 16 threads. It is highly recommended to disable its internal threadpool by setting the environment variable 'OPENBLAS_NUM_THREADS=1' or by calling 'threadpoolctl.threadpool_limits(1, "blas")'. Having OpenBLAS use a threadpool can lead to severe performance issues here.
+  check_blas_config()
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [00:05<00:00,  3.45it/s]
+ALS model training took 6.39 seconds.
+Calculating ALS scores for train_df...
+Calculating ALS scores for test_df...
+
+Feature engineering for LightGBM...
+Converting specified columns to 'category' dtype for LightGBM...
+Number of features for LightGBM: 98
+
+--- Training LightGBM Classifier ---
+Training until validation scores don't improve for 100 rounds
+Did not meet early stopping. Best iteration is:
+[1000]	valid_0's auc: 0.825568
+LightGBM Classifier training finished.
+
+--- Training LightGBM Regressor ---
+Training until validation scores don't improve for 100 rounds
+Did not meet early stopping. Best iteration is:
+[1000]	valid_0's l1: 0.403962
+LightGBM Regressor training finished.
+
+Predicting on test set with both models...
+/home/regium/Documents/EPITA/RECOMMENDER/PROJECT/tmp11.py:457: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  test_lgbm_df['classifier_score'] = lgbm_classifier_model.predict_proba(X_test_lgbm)[:, 1].astype(np.float32)
+/home/regium/Documents/EPITA/RECOMMENDER/PROJECT/tmp11.py:458: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+  test_lgbm_df['regressor_score'] = lgbm_regressor_model.predict(X_test_lgbm).astype(np.float32)
+
+Evaluating Recommender System (Focus on re-ranking classifier's top items)...
+Evaluating users: 100%|█████████████████████████████████████████████████████████████████████████████████████████████| 1411/1411 [00:24<00:00, 57.87it/s]
+
+--- Final Metrics (Averaged over users) ---
+Precision@10: 0.9074
+Recall@10:    0.0095
+NDCG@10:      0.9065
+MAP@10:       0.0090
+Precision@20: 0.8938
+Recall@20:    0.0186
+NDCG@20:      0.9045
+MAP@20:       0.0175
+Precision@50: 0.8464
+Recall@50:    0.0438
+NDCG@50:      0.9062
+MAP@50:       0.0401
+Precision@100: 0.8132
+Recall@100:    0.0837
+NDCG@100:      0.9071
+MAP@100:       0.0743
+Precision@200: 0.7781
+Recall@200:    0.1593
+NDCG@200:      0.9074
+MAP@200:       0.1364
+Precision@500: 0.7178
+Recall@500:    0.3634
+NDCG@500:      0.9069
+MAP@500:       0.2930
+Precision@1000: 0.6264
+Recall@1000:    0.6191
+NDCG@1000:      0.9053
+MAP@1000:       0.4677
+
+Total script execution time: 19.00 minutes.
+
+Top 15 LightGBM Classifier Feature Importances:
+                       feature  importance
+31                onehot_feat3       13403
+1                    author_id        9196
+36                onehot_feat8        8331
+97              video_duration        1745
+93       user_agg_interactions        1000
+94      user_agg_unique_videos         834
+35                onehot_feat7         741
+0                    als_score         521
+16                 hour_of_day         426
+12             follow_user_num         408
+30                onehot_feat2         348
+96             video_agg_views         288
+38               register_days         268
+91   third_level_category_name         222
+40  second_level_category_name         217
+
+Top 15 LightGBM Regressor Feature Importances:
+                       feature  importance
+31                onehot_feat3       12666
+1                    author_id        8259
+36                onehot_feat8        7866
+97              video_duration        2845
+93       user_agg_interactions        1001
+94      user_agg_unique_videos         848
+35                onehot_feat7         846
+16                 hour_of_day         605
+12             follow_user_num         437
+38               register_days         418
+30                onehot_feat2         405
+0                    als_score         378
+40  second_level_category_name         342
+11   first_level_category_name         316
+21                onehot_feat1         268
