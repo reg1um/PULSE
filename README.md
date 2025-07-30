@@ -1,4 +1,4 @@
-# FinalProject_2025_Arthur_HAMARD
+# PULSE - Personalized User-Learning Short-form Engine
 
 ## Hybrid Multi-Stage Recommender System for KuaiRec
 
